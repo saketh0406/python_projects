@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: course-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: course
+      MYSQL_USER: course
+      MYSQL_PASSWORD: course
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  api:
+    build: .
+    container_name: course-api
+    restart: always
+    depends_on:
+      - db
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "
+      until python -c 'import pymysql; pymysql.connect(host=\"db\", user=\"course\", password=\"course\", database=\"course\")'; do
+        echo 'Waiting for database...';
+        sleep 2;
+      done;
+      uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
+
+volumes:
+  mysql_data:
