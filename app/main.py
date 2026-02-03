@@ -7,6 +7,7 @@ from app.database import SessionLocal, engine
 from app import models, schemas, auth
 import pymysql
 from fastapi.openapi.utils import get_openapi
+from typing import Optional
 
 # --- wait for DB to be ready ---
 while True:
@@ -144,7 +145,8 @@ def create_course(
     db_course = models.Course(
         title=course.title,
         description=course.description,
-        instructor_id=user.id
+        instructor_id=user.id,
+        instructor_email=instructor_email
     )
 
     db.add(db_course)
@@ -193,14 +195,16 @@ def enroll(
 
 
 @app.get("/enrollments", response_model=list[schemas.EnrollmentResponse])
-def list_enrollments(student_email: str, db: Session = Depends(get_db)):
-    student = db.query(models.User).filter(models.User.email == student_email).first()
-    if not student or student.role != "student":
-        raise HTTPException(status_code=403, detail="Student access required")
-
-    return db.query(models.Enrollment).filter(
-        models.Enrollment.student_id == student.id
-    ).all()
+def list_enrollments(student_email: Optional[str] = None, db: Session = Depends(get_db)):
+    if student_email:
+        student = db.query(models.User).filter(models.User.email == student_email).first()
+        if not student or student.role != "student":
+            raise HTTPException(status_code=403, detail="Student access required")
+        return db.query(models.Enrollment).filter(
+            models.Enrollment.student_id == student.id
+        ).all()
+    else:
+        return db.query(models.Enrollment).all()
 
 
 # --- Assignments ---
